@@ -13,8 +13,10 @@ anyio==4.11.0
     #   httpx
     #   starlette
     #   watchfiles
-bcrypt==5.0.0
-    # via passlib
+bcrypt==4.0.1
+    # via
+    #   -r requirements.in
+    #   passlib
 certifi==2025.11.12
     # via
     #   httpcore
