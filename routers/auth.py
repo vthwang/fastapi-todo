@@ -59,8 +59,10 @@ class CreateUserRequest(BaseModel):
     role: str
 
 
-def create_access_token(username: str, user_id: int, expires_delta: timedelta):
-    encode = {"sub": username, "id": user_id}
+def create_access_token(
+    username: str, user_id: int, role: str, expires_delta: timedelta
+):
+    encode = {"sub": username, "id": user_id, "role": role}
     expires = datetime.now(timezone.utc) + expires_delta
     encode.update({"exp": expires})
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
@@ -71,7 +73,8 @@ def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str = payload.get("sub")
         user_id: int = payload.get("id")
-        return {"username": username, "id": user_id}
+        role: str = payload.get("role")
+        return {"username": username, "id": user_id, "role": role}
     except jwt.JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -105,5 +108,7 @@ def login_for_access_token(
             detail="Invalid username or password",
         )
 
-    access_token = create_access_token(user.username, user.id, timedelta(minutes=20))
+    access_token = create_access_token(
+        user.username, user.id, user.role, timedelta(minutes=20)
+    )
     return {"access_token": access_token, "token_type": "bearer"}
