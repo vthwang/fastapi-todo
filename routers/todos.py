@@ -6,6 +6,7 @@ from database import engine, SessionLocal
 from sqlalchemy.orm import Session
 from typing import Annotated
 from starlette import status
+from .auth import get_current_user
 
 router = APIRouter()
 
@@ -28,33 +29,48 @@ def get_db():
 
 
 db_dependency = Annotated[Session, Depends(get_db)]
+user_dependency = Annotated[dict, Depends(get_current_user)]
 
 
 @router.get("/")
-def read_all(db: db_dependency):
-    return db.query(Todo).all()
+def read_all(user: user_dependency, db: db_dependency):
+    return db.query(Todo).filter(Todo.owner_id == user.get("id")).all()
 
 
 @router.get("/todo/{todo_id}")
-def read_todo(db: db_dependency, todo_id: int = Path(gt=0)):
-    todo_model = db.query(Todo).filter(Todo.id == todo_id).first()
+def read_todo(user: user_dependency, db: db_dependency, todo_id: int = Path(gt=0)):
+    todo_model = (
+        db.query(Todo)
+        .filter(Todo.id == todo_id)
+        .filter(Todo.owner_id == user.get("id"))
+        .first()
+    )
     if todo_model is not None:
         return todo_model
     raise HTTPException(status_code=404, detail="Todo not found")
 
 
 @router.post("/todo", status_code=status.HTTP_201_CREATED)
-def create_todo(db: db_dependency, todo_request: TodoRequest):
-    todo_model = Todo(**todo_request.model_dump())
+def create_todo(user: user_dependency, db: db_dependency, todo_request: TodoRequest):
+    todo_model = Todo(**todo_request.model_dump(), owner_id=user.get("id"))
     db.add(todo_model)
     db.commit()
+    return todo_model
 
 
 @router.put("/todo/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
 def update_todo(
-    db: db_dependency, todo_request: TodoRequest, todo_id: int = Path(gt=0)
+    user: user_dependency,
+    db: db_dependency,
+    todo_request: TodoRequest,
+    todo_id: int = Path(gt=0),
 ):
-    todo_model = db.query(Todo).filter(Todo.id == todo_id).first()
+    todo_model = (
+        db.query(Todo)
+        .filter(Todo.id == todo_id)
+        .filter(Todo.owner_id == user.get("id"))
+        .first()
+    )
     if todo_model is None:
         raise HTTPException(status_code=404, detail="Todo not found")
     todo_model.title = todo_request.title
@@ -65,8 +81,13 @@ def update_todo(
 
 
 @router.delete("/todo/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_todo(db: db_dependency, todo_id: int = Path(gt=0)):
-    todo_model = db.query(Todo).filter(Todo.id == todo_id).first()
+def delete_todo(user: user_dependency, db: db_dependency, todo_id: int = Path(gt=0)):
+    todo_model = (
+        db.query(Todo)
+        .filter(Todo.id == todo_id)
+        .filter(Todo.owner_id == user.get("id"))
+        .first()
+    )
     if todo_model is None:
         raise HTTPException(status_code=404, detail="Todo not found")
     db.delete(todo_model)
