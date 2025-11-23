@@ -62,3 +62,12 @@ def update_todo(
     todo_model.priority = todo_request.priority
     todo_model.complete = todo_request.complete
     db.commit()
+
+
+@app.delete("/todo/{todo_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_todo(db: db_dependency, todo_id: int = Path(gt=0)):
+    todo_model = db.query(Todo).filter(Todo.id == todo_id).first()
+    if todo_model is None:
+        raise HTTPException(status_code=404, detail="Todo not found")
+    db.delete(todo_model)
+    db.commit()
