@@ -8,18 +8,21 @@ from fastapi import Depends
 from models import User
 from passlib.context import CryptContext
 from starlette import status
-from fastapi.security import OAuth2PasswordRequestForm
+from fastapi.security import OAuth2PasswordRequestForm, OAuth2PasswordBearer
 from fastapi import HTTPException
 from jose import jwt
 
-
-router = APIRouter()
+router = APIRouter(
+    prefix="/auth",
+    tags=["auth"],
+)
 
 SECRET_KEY = "your-256-bit-secret-key"
 ALGORITHM = "HS256"
 
 
 bcrypt_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_bearer = OAuth2PasswordBearer(tokenUrl="auth/token")
 
 
 class Token(BaseModel):
@@ -63,7 +66,20 @@ def create_access_token(username: str, user_id: int, expires_delta: timedelta):
     return jwt.encode(encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-@router.post("/auth", status_code=status.HTTP_201_CREATED)
+def get_current_user(token: Annotated[str, Depends(oauth2_bearer)]):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str = payload.get("sub")
+        user_id: int = payload.get("id")
+        return {"username": username, "id": user_id}
+    except jwt.JWTError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+        )
+
+
+@router.post("/", status_code=status.HTTP_201_CREATED)
 def create_user(create_user_request: CreateUserRequest, db: db_dependency):
     user_model = User(
         username=create_user_request.username,
@@ -84,7 +100,10 @@ def login_for_access_token(
 ):
     user = authenticate_user(form_data.username, form_data.password, db)
     if not user:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid username or password",
+        )
 
     access_token = create_access_token(user.username, user.id, timedelta(minutes=20))
     return {"access_token": access_token, "token_type": "bearer"}
