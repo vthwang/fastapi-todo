@@ -57,6 +57,7 @@ class CreateUserRequest(BaseModel):
     last_name: str
     password: str
     role: str
+    phone_number: str
 
 
 def create_access_token(
@@ -92,6 +93,7 @@ def create_user(create_user_request: CreateUserRequest, db: db_dependency):
         password=bcrypt_context.hash(create_user_request.password),
         role=create_user_request.role,
         is_active=True,
+        phone_number=create_user_request.phone_number,
     )
     db.add(user_model)
     db.commit()

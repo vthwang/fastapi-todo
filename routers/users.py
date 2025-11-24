@@ -59,3 +59,11 @@ def change_password(
     user_model.password = bcrypt_context.hash(user_verification.new_password)
     db.commit()
     return {"message": "Password updated successfully"}
+
+
+@router.put("/phone-number", status_code=status.HTTP_204_NO_CONTENT)
+def change_phone_number(user: user_dependency, db: db_dependency, phone_number: str):
+    user_model = db.query(User).filter(User.id == user.get("id")).first()
+    user_model.phone_number = phone_number
+    db.commit()
+    return {"message": "Phone number updated successfully"}
