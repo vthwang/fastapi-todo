@@ -1,16 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Path
-import models
 from pydantic import BaseModel, Field
-from models import Todo
-from database import engine, SessionLocal
+from ..models import Todo
+from ..database import SessionLocal
 from sqlalchemy.orm import Session
 from typing import Annotated
 from starlette import status
 from .auth import get_current_user
 
 router = APIRouter()
-
-models.Base.metadata.create_all(bind=engine)
 
 
 class TodoRequest(BaseModel):
