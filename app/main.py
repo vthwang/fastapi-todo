@@ -3,6 +3,11 @@ from .models import Base
 from .database import engine
 from .routers import auth, todos, admin, users
 from scalar_fastapi import get_scalar_api_reference
+import logging
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s"
+)
 
 app = FastAPI()
 
